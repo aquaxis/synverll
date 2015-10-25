@@ -389,32 +389,33 @@ char *regalloc(char *name)
 	int i;
 	int ret;
 
+	// 確保している容量は暫定です
+	buf=calloc(strlen(name)+20,1);
 	if(!strcmp(name, "false")){
-		buf=calloc(strlen("(0)")+1,1);
 		sprintf(buf, "(0)");
 	}else if(!strcmp(name, "true")){
-		buf=calloc(strlen("(1)")+1,1);
 		sprintf(buf, "(1)");
 	}else if(name[0] == '%'){
-		buf=calloc(strlen(name)+1+6,1);
 		ret = is_memmap_tree(module_name, name);
 		if(ret){
+			// ポインターで固定アドレスを解けた場合
 			ret = get_adrs_memmap(module_name, name);
 			sprintf(buf, "(%d)", ret);
 		}else{
+			// 変数
 			sprintf(buf, "__sig_%s", &name[1]);
 		}
 	}else if(name[0] == '@'){
-		buf=calloc(strlen(name)+1+6,1);
+		// メモリ
 		ret = is_memmap_tree(module_name, name);
 		if(ret){
+			// メモリで固定アドレスを解けた場合
 			ret = get_adrs_memmap(module_name, name);
 			sprintf(buf, "(%d)", ret);
 		}else{
 			sprintf(buf, "__sig_%s", &name[1]);
 		}
 	}else{
-		buf=calloc(strlen(name)+3,1);
 		sprintf(buf, "(%s)", name);
 	}
 
@@ -802,12 +803,24 @@ int create_verilog_proc_tree()
 					 */
 					str1 = regalloc(now_parser_tree_ir->label);
 					str2 = regalloc(now_parser_tree_ir->reg.input_left);
-					sprintf(buf, "assign %s = %s;\n",
+					sprintf(buf, "assign %s = %s",
 						str1,
 						str2
 					);
 					free(str1);
 					free(str2);
+					strcpy(label, "");
+					str2 = regalloc(now_parser_tree_ir->reg.input_right);
+					if(!strcmp(now_parser_tree_ir->reg.name, "shl")){
+						sprintf(label, " << %s", str2);
+					}else if(!strcmp(now_parser_tree_ir->reg.name, "lshl")){
+						sprintf(label, " << %s", str2);
+					}else if(!strcmp(now_parser_tree_ir->reg.name, "lshr")){
+						sprintf(label, " >> %s", str2);
+					}else if(!strcmp(now_parser_tree_ir->reg.name, "ashr")){
+						sprintf(label, " >> %s", str2);
+					}
+					sprintf(buf, "%s%s;\n", buf, label);
 					verilog_wire = register_verilog(verilog_wire, buf);
 					break;
 				case PARSER_IR_FLAG_CALL:
@@ -832,7 +845,7 @@ int create_verilog_proc_tree()
 					 */
 					if(!strcmp(now_parser_tree_ir->call.name, "@llvm.memcpy.p0i8.p0i8.i32")){
 						strcpy(now_parser_tree_ir->call.name, "@llvm_memcpy");
-						printf("[WARINIG] find a \"@llvm.memcpy.p0i8.p0i8.i32\"\n");
+//						printf("[WARINIG] find a \"@llvm.memcpy.p0i8.p0i8.i32\"\n");
 					}
 
 					proc_tree_current->seq_req.ena = 1;
@@ -1127,7 +1140,7 @@ int create_verilog_proc_tree()
 						 * ちゃんと処理すること。いまのところ暫定だよ。
 						 */
 						leng = 3;
-						printf("[WARNING] LENFTH: %s\n", now_parser_tree_ir->load.type);
+						printf("[WARNING] LENGTH: %s\n", now_parser_tree_ir->load.type);
 					}
 					sprintf(buf, "\t\t\t__gm_leng <= %d;\n",
 						leng

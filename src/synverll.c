@@ -94,7 +94,7 @@ int process_function(char *name)
 
 		sprintf(filename, "__%s.ll", name);
 
-		printf(" -> Open file: %s\n", filename);
+//		printf(" -> Open file: %s\n", filename);
 		if((fp = fopen(filename,"rb")) == NULL){
 			printf("can't open file.\n");
 			free(line);
@@ -138,7 +138,7 @@ int process_function(char *name)
 #if 0
 		// デバッグ用
 		sprintf(filename, "log/debug_%s.log", name);
-		printf(" -> Open file: %s\n", filename);
+//		printf(" -> Open file: %s\n", filename);
 		if((fp = fopen(filename,"w")) == NULL){
 			printf("can't open file.\n");
 			free(line);
@@ -152,7 +152,7 @@ int process_function(char *name)
 #endif
 
 		sprintf(filename, "%s.v", &module_name[1]);
-		printf(" -> Open file: %s\n", filename);
+//		printf(" -> Open file: %s\n", filename);
 		if((fp = fopen(filename,"w")) == NULL){
 			printf("can't open file.\n");
 			free(line);
@@ -204,7 +204,7 @@ int process(char *csource)
 	filename = malloc(STR_MAX);
 	sprintf(filename, "module_list.txt");
 
-	printf(" -> Open file: %s\n", filename);
+//	printf(" -> Open file: %s\n", filename);
 	if((fp = fopen(filename,"w+")) == NULL){
 		printf("can't open file.\n");
 		free(filename);
@@ -218,7 +218,7 @@ int process(char *csource)
 	filename = malloc(STR_MAX);
 	sprintf(filename, "memory_map.txt");
 
-	printf(" -> Open file: %s\n", filename);
+//	printf(" -> Open file: %s\n", filename);
 	if((fp = fopen(filename,"w+")) == NULL){
 		printf("can't open file.\n");
 		free(filename);
