@@ -293,7 +293,7 @@ int output_proc_tree(FILE *fp)
 	fprintf(fp,"always @(posedge __func_clock or negedge __func_reset) begin\n");
 	fprintf(fp,"\tif(!__func_reset) begin\n");
 	fprintf(fp,"\t\t__state <= __state_start_req;\n");
-	fprintf(fp,"\t\t__func_ready <= 0;\n");
+	fprintf(fp,"\t\t__func_ready <= 1;\n");
 	fprintf(fp,"\t\t__func_done <= 0;\n");
 	// 初期化を入れる
 	fprintf(fp,"\tend else begin\n");
@@ -729,6 +729,7 @@ int create_verilog_proc_tree()
 	char *call_name;
 
 	int is_call;
+	int is_signed;
 
 	token = calloc(STR_MAX, 1);
 	buf = calloc(STR_MAX, 1);
@@ -758,12 +759,16 @@ int create_verilog_proc_tree()
 				case PARSER_IR_FLAG_REGISTER:
 					proc_tree_current->seq_exec.ena = 1;
 
+					is_signed = 0;
 					if(!strcmp(now_parser_tree_ir->reg.name, "add")){
 						strcpy(label, "+");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->reg.name, "sub")){
 						strcpy(label, "-");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->reg.name, "mul")){
 						strcpy(label, "*");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->reg.name, "and")){
 						strcpy(label, "&");
 					}else if(!strcmp(now_parser_tree_ir->reg.name, "or")){
@@ -772,18 +777,18 @@ int create_verilog_proc_tree()
 						strcpy(label, "^");
 					}else{
 						strcpy(label, "+");
+						is_signed = 1;
 						printf("[ERROR] REGISTER - unkown process(%s)\n", now_parser_tree_ir->reg.name);
 					}
 
 					str1 = regalloc(now_parser_tree_ir->label);
 					str2 = regalloc(now_parser_tree_ir->reg.input_left);
 					str3 = regalloc(now_parser_tree_ir->reg.input_right);
-					sprintf(buf, "\t\t\t%s <= %s %s %s;\n",
-						str1,
-						str2,
-						label,
-						str3
-					);
+					if(is_signed){
+						sprintf(buf, "\t\t\t%s <= $signed(%s) %s $signed(%s);\n", str1, str2, label, str3);
+					}else{
+						sprintf(buf, "\t\t\t%s <= %s %s %s;\n", str1, str2, label, str3);
+					}
 					free(str1);
 					free(str2);
 					free(str3);
@@ -1043,14 +1048,19 @@ int create_verilog_proc_tree()
 					proc_tree_current->seq_exec.ena = 1;
 
 					// execプロセス
+					is_signed = 0;
 					if(!strcmp(now_parser_tree_ir->comp.value, "sgt")){
 						strcpy(label, ">");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->comp.value, "sge")){
 						strcpy(label, ">=");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->comp.value, "slt")){
 						strcpy(label, "<");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->comp.value, "sle")){
 						strcpy(label, "<=");
+						is_signed = 1;
 					}else if(!strcmp(now_parser_tree_ir->comp.value, "ugt")){
 						strcpy(label, ">");
 					}else if(!strcmp(now_parser_tree_ir->comp.value, "uge")){
@@ -1069,12 +1079,11 @@ int create_verilog_proc_tree()
 					str1 = regalloc(now_parser_tree_ir->label);
 					str2 = regalloc(now_parser_tree_ir->comp.input_left);
 					str3 = regalloc(now_parser_tree_ir->comp.input_right);
-					sprintf(buf, "\t\t\t%s <= ( %s %s %s );\n",
-						str1,
-						str2,
-						label,
-						str3
-					);
+					if(is_signed){
+						sprintf(buf, "\t\t\t%s <= ( $signed(%s) %s $signed(%s) );\n", str1, str2, label, str3);
+					}else{
+						sprintf(buf, "\t\t\t%s <= ( %s %s %s );\n", str1, str2, label, str3);
+					}
 					free(str1);
 					free(str2);
 					free(str3);
@@ -1242,11 +1251,13 @@ int create_verilog_proc_tree()
 					proc_tree_current->seq_wait.condision = register_verilog(proc_tree_current->seq_wait.condision, buf);
 
 					str3 = regalloc(now_parser_tree_ir->label);
-					sprintf(buf, "\t\t\t__call_%s_req <= 0;\n\t\t\t%s <= __call_%s_result;\n",
-						str2,
-						str3,
-						str2
-					);
+					if(!strcmp(now_parser_tree_ir->comp.value, "sdiv")){
+						// 除算
+						sprintf(buf, "\t\t\t__call_%s_req <= 0;\n\t\t\t%s <= __call_%s_q;\n", str2, str3, str2);
+					}else{
+						// 剰余
+						sprintf(buf, "\t\t\t__call_%s_req <= 0;\n\t\t\t%s <= __call_%s_r;\n", str2, str3, str2);
+					}
 					proc_tree_current->seq_wait.body = register_verilog(proc_tree_current->seq_wait.body, buf);
 
 					// execプロセス

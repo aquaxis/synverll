@@ -441,7 +441,7 @@ int create_top_wire(FILE *fp)
 }
 
 /*!
- * @brief	信号宣言の生成
+ * @brief	未使用の信号宣言の生成
  */
 int create_top_nowire(FILE *fp)
 {
@@ -811,6 +811,7 @@ int output_top_module(FILE *fp, char *topname)
 	// 外部信号を入れる
 	fprintf(fp,"\t// global signal\n");
 	create_top_global(fp);
+//	fprintf(fp,"\t// nowire\n");
 	create_top_nowire(fp);
 
 	fprintf(fp,"\n\toutput dummy\n");

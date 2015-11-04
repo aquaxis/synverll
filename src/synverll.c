@@ -84,13 +84,14 @@ int process_function(char *name)
 {
     FILE *fp;
     char *line, *token;
-	char *filename;
+	char *filename, *oldname;
 
 	printf("[LLVM-IR function parser start]\n");
 
 	line = calloc(STR_MAX,1);
 	token = calloc(STR_MAX,1);
 	filename = calloc(STR_MAX,1);
+	oldname = calloc(STR_MAX,1);
 
 		sprintf(filename, "__%s.ll", name);
 
@@ -135,9 +136,8 @@ int process_function(char *name)
 //		print_array_type();				// メモリ一覧の表示
 //		print_call_tree(call_tree_top);				// CALL命令の表示
 
-#if 0
 		// デバッグ用
-		sprintf(filename, "log/debug_%s.log", name);
+		sprintf(filename, "%s.log", &module_name[1]);
 //		printf(" -> Open file: %s\n", filename);
 		if((fp = fopen(filename,"w")) == NULL){
 			printf("can't open file.\n");
@@ -149,7 +149,6 @@ int process_function(char *name)
 		print_parser_tree_ir(fp);
 		print_proc_tree(fp);
 		fclose(fp);
-#endif
 
 		sprintf(filename, "%s.v", &module_name[1]);
 //		printf(" -> Open file: %s\n", filename);
@@ -166,8 +165,23 @@ int process_function(char *name)
 		register_module_tree(module_name);
 		new_module_stack();
 
+		sprintf(oldname, "__%s.ll", name);
+		sprintf(filename, "%s.ll", &module_name[1]);
+		printf("%s -> %s\n", oldname, filename);
+		rename(oldname, filename);
+
+		sprintf(oldname, "__%s.c", name);
+		sprintf(filename, "%s.c", &module_name[1]);
+		printf("%s -> %s\n", oldname, filename);
+		rename(oldname, filename);
+
 		clean_parser_tree_ir();
 		clean_proc_tree();
+
+		free(line);
+		free(token);
+		free(filename);
+		free(oldname);
 
 	return 0;
 }
@@ -239,15 +253,16 @@ int process(char *csource)
 	}
 	output_top_module(fp, topname);
 	fclose(fp);
-
+/*
 	for(i = 0; i < function_count; i++){
 		sprintf(filename, "__%03d.c", i);
 		remove(filename);
 		sprintf(filename, "__%03d.ll", i);
 		remove(filename);
 	}
+*/
 	remove("__extern.c");
-	remove("__extern.h");
+//	remove("__extern.h");
 
 	free(filename);
 

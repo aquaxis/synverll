@@ -540,8 +540,7 @@ int parser_ir_source(char *buf)
 			!strcmp(token, "mul") ||
 			!strcmp(token, "and") ||
 			!strcmp(token, "or") ||
-			!strcmp(token, "xor") ||
-			!strcmp(token, "srem")
+			!strcmp(token, "xor")
 		){
 			// 算術演算/論理演算
 			parser_tree_ir_current->flag = PARSER_IR_FLAG_REGISTER;
@@ -564,6 +563,29 @@ int parser_ir_source(char *buf)
 			!strcmp(token, "sdiv")
 		){
 			// 除算命令
+			/*
+			 * 除算はスペシャル処理
+			 */
+			parser_tree_ir_current->flag = PARSER_IR_FLAG_SCALL;
+			strcpy(parser_tree_ir_current->reg.name, token);
+
+			// タイプ
+			get_irtype_llvm(line, token);
+			strcpy(parser_tree_ir_current->reg.input_left_type, token);
+			// 変数/値
+			get_token_llvm(line, token);
+			strcpy(parser_tree_ir_current->reg.input_left, token);
+			// ,
+			get_token_llvm(line, token);
+			// 変数/値
+			get_token_llvm(line, token);
+			strcpy(parser_tree_ir_current->reg.input_right, token);
+
+			register_signal_tree(parser_tree_ir_current->label, parser_tree_ir_current->reg.input_left_type, SIGNAL_FLAG_REG);
+		}else if(
+			!strcmp(token, "srem")
+		){
+			// 剰余命令
 			/*
 			 * 除算はスペシャル処理
 			 */

@@ -378,6 +378,7 @@ int parser_memory_tree()
 
 								type[strlen(type) -1] = '\0';	// "*"を削除する
 								memory_tree_current->type = charalloc(type);
+								memory_tree_current->size = 4;	// 無条件で32bit
 
 								str = charalloc(memory_tree_current->label);
 //								sprintf(verilog_args, "\tinput [31:0] __base_%s,", convname(sep_p(str)));
