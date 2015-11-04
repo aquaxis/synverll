@@ -135,7 +135,7 @@ int process_function(char *name)
 
 //		print_array_type();				// メモリ一覧の表示
 //		print_call_tree(call_tree_top);				// CALL命令の表示
-
+/*
 		// デバッグ用
 		sprintf(filename, "%s.log", &module_name[1]);
 //		printf(" -> Open file: %s\n", filename);
@@ -149,7 +149,7 @@ int process_function(char *name)
 		print_parser_tree_ir(fp);
 		print_proc_tree(fp);
 		fclose(fp);
-
+*/
 		sprintf(filename, "%s.v", &module_name[1]);
 //		printf(" -> Open file: %s\n", filename);
 		if((fp = fopen(filename,"w")) == NULL){
@@ -164,7 +164,7 @@ int process_function(char *name)
 		// モジュールの登録
 		register_module_tree(module_name);
 		new_module_stack();
-
+/*
 		sprintf(oldname, "__%s.ll", name);
 		sprintf(filename, "%s.ll", &module_name[1]);
 		printf("%s -> %s\n", oldname, filename);
@@ -174,7 +174,7 @@ int process_function(char *name)
 		sprintf(filename, "%s.c", &module_name[1]);
 		printf("%s -> %s\n", oldname, filename);
 		rename(oldname, filename);
-
+*/
 		clean_parser_tree_ir();
 		clean_proc_tree();
 
@@ -253,16 +253,16 @@ int process(char *csource)
 	}
 	output_top_module(fp, topname);
 	fclose(fp);
-/*
+
 	for(i = 0; i < function_count; i++){
 		sprintf(filename, "__%03d.c", i);
 		remove(filename);
 		sprintf(filename, "__%03d.ll", i);
 		remove(filename);
 	}
-*/
+
 	remove("__extern.c");
-//	remove("__extern.h");
+	remove("__extern.h");
 
 	free(filename);
 
