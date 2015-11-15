@@ -267,6 +267,9 @@ int output_proc_tree(FILE *fp)
 	fprintf(fp,"\t// Call Singal\n");
 	output_call_signal_tree(fp);
 
+//	fprintf(fp,"\t// Result Singal\n");
+//	output_verilog_return(fp);
+
 	fprintf(fp,"\n");
 	fprintf(fp,"\toutput reg __dummy\n");
 	fprintf(fp,");\n\n");
@@ -1099,6 +1102,37 @@ int create_verilog_proc_tree()
 					// execプロセス
 					sprintf(buf, "__state <= __state_fin;\n");
 					proc_tree_current->seq_exec.condision = register_verilog(proc_tree_current->seq_exec.condision, buf);
+					
+					if(strcmp(now_parser_tree_ir->ret.type, "void")){
+						// レングス
+						is_signed = 0;
+						if(!strcmp(now_parser_tree_ir->ret.type, "i8")){
+							leng = 0;
+							is_signed = 1;
+						}else if(!strcmp(now_parser_tree_ir->ret.type, "i16")){
+							leng = 1;
+							is_signed = 1;
+						}else if(!strcmp(now_parser_tree_ir->ret.type, "i32")){
+							leng = 3;
+							is_signed = 1;
+						}else{
+							/*
+							 * ToDo:
+							 * ちゃんと処理すること。いまのところ暫定だよ。
+							 */
+							leng = 3;
+							printf("[WRANING] LENGTH: %s\n", now_parser_tree_ir->ret.type);
+						}
+
+						str1 = regalloc(now_parser_tree_ir->ret.name);
+						if(is_signed){
+							sprintf(buf, "\t\t\t__result <= $signed(%s);\n", str1);
+						}else{
+							sprintf(buf, "\t\t\t__result <= (%s);\n", str1);
+						}
+						free(str1);
+						proc_tree_current->seq_exec.body = register_verilog(proc_tree_current->seq_exec.body, buf);
+					}
 					break;
 				case PARSER_IR_FLAG_POINTER:
 					/*
@@ -1455,3 +1489,46 @@ int output_verilog_sdiv(FILE *fp)
 
 	return 0;
 }
+
+/*!
+ * @brief	信号のVerilog HDL出力
+ */
+int output_verilog_return(FILE *fp)
+{
+	PARSER_TREE_IR *now_parser_tree_ir = parser_tree_ir_top;
+
+	int leng;
+
+    while(now_parser_tree_ir != NULL){
+		if(now_parser_tree_ir->flag == PARSER_IR_FLAG_RETURN){
+			if(strcmp(now_parser_tree_ir->ret.type, "void")){
+				// レングス
+				if(!strcmp(now_parser_tree_ir->ret.type, "i8")){
+					leng = 1;
+				}else if(!strcmp(now_parser_tree_ir->ret.type, "i16")){
+					leng = 2;
+				}else if(!strcmp(now_parser_tree_ir->ret.type, "i32")){
+					leng = 4;
+				}else{
+					/*
+					 * ToDo:
+					 * ちゃんと処理すること。いまのところ暫定だよ。
+					 */
+					leng = 4;
+					printf("[WRANING] LENGTH: %s\n", now_parser_tree_ir->ret.type);
+				}
+				
+				fprintf(fp, "\toutput reg [%d:0] __result,\n", (leng*8-1));
+			}
+		}
+        now_parser_tree_ir = now_parser_tree_ir->next_ptr;
+	}
+
+//	str1 = regalloc(now_parser_tree_ir->ret.name);
+//	sprintf(buf, "\toutput [%d:0] __result,\n" (leng*8-1));
+//	free(str1);
+//	proc_tree_current->seq_exec.body = register_verilog(proc_tree_current->seq_exec.body, buf);
+
+    return 0;
+}
+

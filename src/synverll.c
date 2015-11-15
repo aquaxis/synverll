@@ -164,17 +164,17 @@ int process_function(char *name)
 		// モジュールの登録
 		register_module_tree(module_name);
 		new_module_stack();
-/*
+
 		sprintf(oldname, "__%s.ll", name);
-		sprintf(filename, "%s.ll", &module_name[1]);
+		sprintf(filename, "__%s.ll", &module_name[1]);
 		printf("%s -> %s\n", oldname, filename);
 		rename(oldname, filename);
 
 		sprintf(oldname, "__%s.c", name);
-		sprintf(filename, "%s.c", &module_name[1]);
+		sprintf(filename, "__%s.c", &module_name[1]);
 		printf("%s -> %s\n", oldname, filename);
 		rename(oldname, filename);
-*/
+
 		clean_parser_tree_ir();
 		clean_proc_tree();
 

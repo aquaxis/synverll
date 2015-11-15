@@ -22,6 +22,7 @@ enum MEMORY_FLAG{
 	MEMORY_FLAG_LOCAL,		/* ローカルメモリ */
 	MEMORY_FLAG_POINTER,	/* ポインター宣言 */
 	MEMORY_FLAG_REGISTER,	/* 変数 */
+	MEMORY_FLAG_RETURN,		/* 戻り値 */
 };
 
 typedef struct memory_tree{

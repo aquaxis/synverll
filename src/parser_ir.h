@@ -147,6 +147,7 @@ enum SIGNAL_FLAG{
 	SIGNAL_FLAG_WIRE,		/* ワイヤ */
 	SIGNAL_FLAG_RAM,		/* グローバルメモリ*/
 	SIGNAL_FLAG_ALLOCA,		/* ALLOCA */
+	SIGNAL_FLAG_RETURN,		/* RETURN(戻り値) */
 };
 
 #define sep_p(x)	(x[0]=='%' || x[0]=='@')?&x[1]:x

@@ -470,9 +470,19 @@ int parser_ir_source(char *buf)
 		// リターン
 		parser_tree_ir_current->flag = PARSER_IR_FLAG_RETURN;
 
-		// 戻り値
+		// 戻り値(タイプ)
 		get_token_llvm(line, token);
 		if(!strcmp(token, "void")){
+			strcat(parser_tree_ir_current->ret.type, token);
+			
+			// voidは戻り値がない
+		}else{
+			// retの対応は暫定なので間違えている可能性がある。
+			// 特にポインタの戻り値には気をつける
+			strcat(parser_tree_ir_current->ret.type, token);
+
+			// 戻り値(値)
+			get_token_llvm(line, token);
 			strcat(parser_tree_ir_current->ret.name, token);
 		}
 	}else if(!strcmp(token, "tail") || !strcmp(token, "call")){

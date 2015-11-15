@@ -59,6 +59,7 @@ TOP_SIGNAL_TREE *top_signal_tree_top        = NULL;
 #define FLAG_ARGS	3
 #define FLAG_BASE	4
 #define FLAG_CALL	5
+#define FLAG_RETURN	6
 
 #define SIG_IN	0
 #define SIG_OUT	1
@@ -449,16 +450,22 @@ int create_top_nowire(FILE *fp)
 
 	now_top_signal_tree = top_signal_tree_top;
     while(now_top_signal_tree != NULL){
-		if((now_top_signal_tree->used == 0) && (now_top_signal_tree->flag == FLAG_ARGS)){
-			if(now_top_signal_tree->inout == SIG_IN){
-				fprintf(fp, "\tinput ");
-			}else{
+		if((now_top_signal_tree->used == 0)){
+			if(now_top_signal_tree->flag == FLAG_ARGS){
+				if(now_top_signal_tree->inout == SIG_IN){
+					fprintf(fp, "\tinput ");
+				}else{
+					fprintf(fp, "\toutput ");
+				}
+				if(now_top_signal_tree->size > 0){
+					fprintf(fp, "[%d:0] ", now_top_signal_tree->size*8-1);
+				}
+				fprintf(fp, "%s,\n", now_top_signal_tree->label);
+			}else if(now_top_signal_tree->flag == FLAG_RETURN){
 				fprintf(fp, "\toutput ");
-			}
-			if(now_top_signal_tree->size > 0){
 				fprintf(fp, "[%d:0] ", now_top_signal_tree->size*8-1);
+				fprintf(fp, "%s,\n", now_top_signal_tree->label);
 			}
-			fprintf(fp, "%s,\n", now_top_signal_tree->label);
 		}
         now_top_signal_tree = now_top_signal_tree->next_ptr;
 	}
@@ -477,7 +484,8 @@ int create_top_nofunc(FILE *fp)
     while(now_top_signal_tree != NULL){
 		if((now_top_signal_tree->used == 0) && (
 			(now_top_signal_tree->flag == FLAG_CTRL) ||
-			(now_top_signal_tree->flag == FLAG_ARGS)
+			(now_top_signal_tree->flag == FLAG_ARGS) ||
+			(now_top_signal_tree->flag == FLAG_RETURN)
 			)
 		){
 			if(now_top_signal_tree->inout == SIG_IN){
@@ -739,6 +747,31 @@ int create_top_module()
 				}
 				sprintf(verilog_module, "\n");
 				now_call_tree = now_call_tree->next_ptr;
+			}
+		}
+
+		sprintf(verilog_module, "\n");
+		register_top_module_decl(verilog_module);
+
+		// 戻り値の生成
+		sprintf(verilog_module, "\t// return value\n");
+		register_top_module_decl(verilog_module);
+
+		{
+			now_memory_tree = now_module_stack->module_tree_ptr->memory_tree_ptr;
+			while(now_memory_tree != NULL){
+				if(now_memory_tree->flag == MEMORY_FLAG_RETURN){
+					if(strcmp(now_memory_tree->type, "void")){
+						sprintf(verilog_signal, "%s__result", module_name);
+						sprintf(verilog_module, "\t.%s(%s),\n", "__result", verilog_signal);
+						register_top_module_decl(verilog_module);
+						
+						sprintf(verilog_wire, "wire [%d:0] %s;", now_memory_tree->size*8-1,verilog_signal);
+
+						register_top_signal_tree("__result", module_name, verilog_signal, FLAG_RETURN, SIG_OUT, now_memory_tree->size, verilog_signal, 0, verilog_signal, verilog_wire);
+					}
+				}
+				now_memory_tree = now_memory_tree->next_ptr;
 			}
 		}
 

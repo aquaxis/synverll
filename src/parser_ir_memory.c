@@ -495,6 +495,38 @@ int parser_memory_tree()
 					memory_tree_current->flag = MEMORY_FLAG_LOCAL;
 
 					break;
+					
+				case PARSER_IR_FLAG_RETURN:
+					insert_memory_tree();
+					memory_tree_current->flag = MEMORY_FLAG_RETURN;
+
+					if(strcmp(now_parser_tree_ir->ret.type, "void")){
+						// レングス
+						if(!strcmp(now_parser_tree_ir->ret.type, "i8")){
+							size = 1;
+						}else if(!strcmp(now_parser_tree_ir->ret.type, "i16")){
+							size = 2;
+						}else if(!strcmp(now_parser_tree_ir->ret.type, "i32")){
+							size = 4;
+						}else{
+							/*
+							 * ToDo:
+							 * ちゃんと処理すること。いまのところ暫定だよ。
+							 */
+							size = 4;
+							printf("[WRANING] LENGTH: %s\n", now_parser_tree_ir->ret.type);
+						}
+						
+						memory_tree_current->label = charalloc(now_parser_tree_ir->ret.name);
+						memory_tree_current->type = charalloc(now_parser_tree_ir->ret.type);
+						memory_tree_current->size = size;
+
+						sprintf(verilog_args, "\toutput reg [%d:0] __result,\n", (size*8-1));
+					}
+
+					memory_tree_current->verilog_args = charalloc(verilog_args);
+
+					break;
 				default:
 					// 他は何もしない
 					break;
