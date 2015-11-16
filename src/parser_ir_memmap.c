@@ -48,28 +48,6 @@ typedef struct memmap_tree{
 } MEMMAP_TREE;
 
 MEMMAP_TREE *memmap_tree_top        = NULL;
-MEMMAP_TREE *memmap_tree_current    = NULL;
-MEMMAP_TREE *memmap_tree_prev       = NULL;
-
-/*!
- * @brief	メモリマップの登録
- */
-int insert_memmap_tree()
-{
-    if(memmap_tree_top == NULL){
-        memmap_tree_top     = (MEMMAP_TREE *)malloc(sizeof(MEMMAP_TREE));
-        memset(memmap_tree_top, 0, sizeof(MEMMAP_TREE));
-        memmap_tree_current = memmap_tree_top;
-    }else{
-        memmap_tree_current->next_ptr   = (MEMMAP_TREE *)malloc(sizeof(MEMMAP_TREE));
-        memset(memmap_tree_current->next_ptr, 0, sizeof(MEMMAP_TREE));
-        memmap_tree_prev                = memmap_tree_current;
-        memmap_tree_current             = memmap_tree_current->next_ptr;
-        memmap_tree_current->prev_ptr   = memmap_tree_prev;
-        memmap_tree_current->next_ptr   = NULL;
-    }
-    return 0;
-}
 
 /*!
  * @brief	メモリマップの削除
@@ -82,13 +60,12 @@ int clean_memmap_tree()
     now_memmap_tree = memmap_tree_top;
     while(now_memmap_tree != NULL){
         new_memmap_tree = now_memmap_tree->next_ptr;
-        if(now_memmap_tree->label != NULL) free(now_memmap_tree->label);
-        if(now_memmap_tree->module != NULL) free(now_memmap_tree->module);
+        if(now_memmap_tree->label != NULL)	free(now_memmap_tree->label);
+        if(now_memmap_tree->module != NULL)	free(now_memmap_tree->module);
         free(now_memmap_tree);
         now_memmap_tree = new_memmap_tree;
     }
     memmap_tree_top = NULL;
-    memmap_tree_current = memmap_tree_top;
     return 0;
 }
 
@@ -100,26 +77,44 @@ int clean_memmap_tree()
  */
 int register_memmap_tree(char *module, char *label, int size)
 {
+	MEMMAP_TREE *now_memmap_tree		= NULL;
+	MEMMAP_TREE *old_memmap_tree		= NULL;
+
 	unsigned int new_adrs = 0;
 
-	/*
-	 * 新しいアドレスの作成
-	 */
-	if(memmap_tree_current != NULL){
-		new_adrs = (memmap_tree_current->adrs + memmap_tree_current->size + 3) & 0xFFFFFFC;
-	}else{
-		new_adrs = 0;
-	}
 
 	if(!is_memmap_tree(module, label)){
-		insert_memmap_tree();
+		// メモリマップに存在しなければ新規登録
+		now_memmap_tree = memmap_tree_top;
+		while(now_memmap_tree != NULL){
+			old_memmap_tree = now_memmap_tree;
+			now_memmap_tree = now_memmap_tree->next_ptr;
+		}
 
-		memmap_tree_current->label = calloc(strlen(label)+1,1);
-		strcpy(memmap_tree_current->label, label);
-		memmap_tree_current->module = calloc(strlen(module)+1,1);
-		strcpy(memmap_tree_current->module, module);
-		memmap_tree_current->adrs = new_adrs;		// アドレスの登録
-		memmap_tree_current->size = size;
+		// 新しいアドレスの作成
+		if(old_memmap_tree != NULL){
+			// アドレスは4Byteアライメントに揃える
+			new_adrs = (old_memmap_tree->adrs + old_memmap_tree->size + 3) & 0xFFFFFFC;
+		}else{
+			new_adrs = 0;
+		}
+
+		now_memmap_tree				= (MEMMAP_TREE *)calloc(sizeof(MEMMAP_TREE),1);
+		now_memmap_tree->prev_ptr	= old_memmap_tree;
+		now_memmap_tree->next_ptr	= NULL;
+
+		if(memmap_tree_top == NULL){
+			memmap_tree_top     = now_memmap_tree;
+		}else{
+			old_memmap_tree->next_ptr   = now_memmap_tree;
+		}
+
+		now_memmap_tree->label = calloc(strlen(label)+1,1);
+		strcpy(now_memmap_tree->label, label);
+		now_memmap_tree->module = calloc(strlen(module)+1,1);
+		strcpy(now_memmap_tree->module, module);
+		now_memmap_tree->adrs = new_adrs;		// アドレスの登録
+		now_memmap_tree->size = size;			// サイズの登録
 	}
 
 	return 0;
@@ -127,6 +122,9 @@ int register_memmap_tree(char *module, char *label, int size)
 
 /*!
  * @brief	メモリマップの検索
+ *
+ * @note
+ * メモリに名前が存在すれば、1を返します。
  */
 int is_memmap_tree(char *module, char *label)
 {
@@ -199,8 +197,9 @@ int print_memmap_tree(FILE *fp)
 
     now_memmap_tree = memmap_tree_top;
     while(now_memmap_tree != NULL){
-//		if(now_memmap_tree->size > 0)
-		fprintf(fp, "%-16s %-32s %08x  %8d\n", now_memmap_tree->module, now_memmap_tree->label, now_memmap_tree->adrs, now_memmap_tree->size);
+		if(now_memmap_tree->size > 0){
+			fprintf(fp, "%-16s %-32s %08x  %8d\n", now_memmap_tree->module, now_memmap_tree->label, now_memmap_tree->adrs, now_memmap_tree->size);
+		}
         now_memmap_tree = now_memmap_tree->next_ptr;
     }
 

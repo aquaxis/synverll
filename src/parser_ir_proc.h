@@ -30,5 +30,6 @@ extern int recall_proc_tree_end();
 extern char *regalloc(char *name);
 extern char * register_verilog(char *body, char *buf);
 extern int output_verilog_sdiv(FILE *fp);
+extern int output_verilog_return(FILE *fp);
 
 #endif

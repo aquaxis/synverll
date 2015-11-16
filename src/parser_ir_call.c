@@ -249,7 +249,8 @@ int output_call_signal_tree(FILE *fp)
 			if(
 				strcmp(now_call_signal_tree->signal_name, "req") &&
 				strcmp(now_call_signal_tree->signal_name, "ready") &&
-				strcmp(now_call_signal_tree->signal_name, "done")
+				strcmp(now_call_signal_tree->signal_name, "done") &&
+				strcmp(now_call_signal_tree->signal_name, "result")
 			){
 				sprintf(temp, "%s_%d",
 					temp,

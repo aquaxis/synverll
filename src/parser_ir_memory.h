@@ -44,6 +44,7 @@ typedef struct module_tree{
     char				*module_name;		// ラベル
     struct memory_tree	*memory_tree_ptr;	// メモリツリーのポインタ
     struct call_tree	*call_tree_ptr;		// CALLツリーのポインタ
+    int					is_module_gm_if;
 } MODULE_TREE;
 
 typedef struct module_stack{
@@ -74,6 +75,7 @@ extern int print_module_tree(FILE *fp);
 extern int register_module_tree(char *module_name);
 extern int search_module_tree(char *module, char label);
 extern int new_module_stack();
+extern int output_memory_tree_return(FILE *fp);
 
 extern MEMORY_TREE *memory_tree_top;
 extern MEMORY_TREE *memory_tree_current;

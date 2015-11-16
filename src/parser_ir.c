@@ -474,7 +474,7 @@ int parser_ir_source(char *buf)
 		get_token_llvm(line, token);
 		if(!strcmp(token, "void")){
 			strcat(parser_tree_ir_current->ret.type, token);
-			
+
 			// voidは戻り値がない
 		}else{
 			// retの対応は暫定なので間違えている可能性がある。
@@ -909,6 +909,8 @@ int parser_ir_source(char *buf)
 
 			strcpy(parser_tree_ir_current->call.name, token);	// 呼び出し名
 
+			register_signal_tree(parser_tree_ir_current->label, parser_tree_ir_current->call.result_type, SIGNAL_FLAG_REG);
+
 			// 引数取得
 			level = 0;
 			do{
@@ -921,6 +923,7 @@ int parser_ir_source(char *buf)
 					if(!strcmp(token, ")")) level--;
 				}
 			}while(strcmp(token,")") || level != 0);
+
 		}else{
 			printf("[ERROR] unknown call\n");
 			parser_tree_ir_current->flag = PARSER_IR_FLAG_UNKNOWN;

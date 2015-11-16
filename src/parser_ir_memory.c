@@ -44,6 +44,8 @@ MODULE_TREE *module_tree_prev       = NULL;
 
 MODULE_STACK *module_stack_top		= NULL;
 
+extern int is_module_gm_if;
+
 /*!
  * @brief	メモリツリー登録
  */
@@ -112,10 +114,39 @@ int output_memory_tree(FILE *fp)
     while(now_memory_tree != NULL){
 		if(now_memory_tree->verilog_args != NULL){
 			if(strlen(now_memory_tree->verilog_args) > 0){
-				if(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1){
+				if(
+					(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1) &&
+					(now_memory_tree->flag != MEMORY_FLAG_RETURN)
+				){
 					fprintf(fp, "%s\n", now_memory_tree->verilog_args);
+				}else if(now_memory_tree->flag == MEMORY_FLAG_RETURN){
+
 				}else{
 					now_memory_tree->flag = MEMORY_FLAG_LOCAL;
+				}
+			}
+		}
+        now_memory_tree = now_memory_tree->next_ptr;
+    }
+    return 0;
+}
+
+/*!
+ * @brief	メモリツリーのVerilog HDL表示
+ */
+int output_memory_tree_return(FILE *fp)
+{
+	MEMORY_TREE *now_memory_tree;
+
+    now_memory_tree = memory_tree_top;
+    while(now_memory_tree != NULL){
+		if(now_memory_tree->verilog_args != NULL){
+			if(strlen(now_memory_tree->verilog_args) > 0){
+				if(
+					(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1) &&
+					(now_memory_tree->flag == MEMORY_FLAG_RETURN)
+				){
+					fprintf(fp, "%s\n", now_memory_tree->verilog_args);
 				}
 			}
 		}
@@ -495,7 +526,7 @@ int parser_memory_tree()
 					memory_tree_current->flag = MEMORY_FLAG_LOCAL;
 
 					break;
-					
+
 				case PARSER_IR_FLAG_RETURN:
 					insert_memory_tree();
 					memory_tree_current->flag = MEMORY_FLAG_RETURN;
@@ -516,12 +547,18 @@ int parser_memory_tree()
 							size = 4;
 							printf("[WRANING] LENGTH: %s\n", now_parser_tree_ir->ret.type);
 						}
-						
+
 						memory_tree_current->label = charalloc(now_parser_tree_ir->ret.name);
 						memory_tree_current->type = charalloc(now_parser_tree_ir->ret.type);
 						memory_tree_current->size = size;
 
-						sprintf(verilog_args, "\toutput reg [%d:0] __result,\n", (size*8-1));
+						sprintf(verilog_args, "\toutput reg [%d:0] __func_result\n", (size*8-1));
+					}else{
+						memory_tree_current->label = charalloc("");
+						memory_tree_current->type = charalloc("void");
+						memory_tree_current->size = 0;
+
+						sprintf(verilog_args, "\toutput reg __func_result\n");
 					}
 
 					memory_tree_current->verilog_args = charalloc(verilog_args);
@@ -799,8 +836,9 @@ int get_memory_size(char *label, char *ptr, char *rslt_ptr)
 			base_adrs = get_adrs_memmap(module_name, label);
 			size = get_size_memmap(module_name, label);
 		}
+
 		if(size > 0){
-			sprintf(rslt_ptr, "%d + %s", base_adrs, temp);
+			sprintf(rslt_ptr, "__gm_base + %d + %s", base_adrs, temp);
 		}else{
 			buf = regalloc(label);
 			sprintf(rslt_ptr, "%s + %s", buf, temp);
@@ -917,6 +955,7 @@ int register_module_tree(char *module_name)
 	strcpy(module_tree_current->module_name, module_name);
 	module_tree_current->memory_tree_ptr	= memory_tree_top;
 	module_tree_current->call_tree_ptr		= call_tree_top;
+	module_tree_current->is_module_gm_if	= is_module_gm_if;
 
 	return 0;
 }

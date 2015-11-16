@@ -31,6 +31,7 @@
 #include "parser_ir_top.h"
 
 char *topname;
+int debug_mode = 0;
 
 /*!
  * @brief	Process
@@ -164,7 +165,7 @@ int process_function(char *name)
 		// モジュールの登録
 		register_module_tree(module_name);
 		new_module_stack();
-
+if(debug_mode){
 		sprintf(oldname, "__%s.ll", name);
 		sprintf(filename, "__%s.ll", &module_name[1]);
 		printf("%s -> %s\n", oldname, filename);
@@ -174,7 +175,7 @@ int process_function(char *name)
 		sprintf(filename, "__%s.c", &module_name[1]);
 		printf("%s -> %s\n", oldname, filename);
 		rename(oldname, filename);
-
+}
 		clean_parser_tree_ir();
 		clean_proc_tree();
 
@@ -280,7 +281,9 @@ void help()
     printf(" Hidemi Ishihara <hidemi(at)aquaxis.com>\n");
     printf("\n");
     printf("Usage:\n");
-    printf(" synverll C_SOURCE_FILENAME TOP_MODULE_NAME\n");
+//    printf(" synverll C_SOURCE_FILENAME TOP_MODULE_NAME\n");
+    printf(" synverll [-d] C_SOURCE_FILENAME\n");
+    printf("  -d: Debug Mode(output a debug file)\n");
 }
 
 /*!
@@ -297,7 +300,9 @@ int main(int argc,char *argv[])
             if(!strcmp(argv[i],"--help")){
                 help(); // ヘルプの表示
                 exit(0);
-            }
+            }else if(!strcmp(argv[i],"-d")){
+				debug_mode = 1;
+			}
         }
 
 		if(argc < 2){
@@ -306,7 +311,13 @@ int main(int argc,char *argv[])
 		}
 
 		filename = argv[1];
-		topname  = argv[2];
+//		topname  = argv[2];
+
+		topname = calloc(strlen(filename) +10, 1);
+		strcpy(topname, filename);
+		topname[strlen(topname)-2] = 0;
+		strcat(topname, "_top");
+		printf("topname: %s\n", topname);
 
         process(filename);
     }else{
