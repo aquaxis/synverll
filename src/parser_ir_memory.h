@@ -66,7 +66,7 @@ extern int get_memory_size(char *label, char *ptr, char *rslt_ptr);
 extern int insert_memory_tree();
 extern int insert_module_tree();
 extern int new_memory_tree();
-extern int output_memory_tree(FILE *fp);
+extern int output_memory_tree(FILE *fp, int flag);
 extern int output_memory_tree_decl(FILE *fp);
 extern int output_memory_tree_proc(FILE *fp);
 extern int parser_memory_tree();
@@ -76,6 +76,7 @@ extern int register_module_tree(char *module_name);
 extern int search_module_tree(char *module, char label);
 extern int new_module_stack();
 extern int output_memory_tree_return(FILE *fp);
+extern int new_module_tree();
 
 extern MEMORY_TREE *memory_tree_top;
 extern MEMORY_TREE *memory_tree_current;

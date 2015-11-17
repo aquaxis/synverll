@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -34,33 +35,8 @@
 #include "parser_ir_struct.h"
 #include "parser_ir_top.h"
 
-CALL_TREE *call_tree_top        = NULL;
-CALL_TREE *call_tree_current    = NULL;
-CALL_TREE *call_tree_prev       = NULL;
-
-CALL_SIGNAL_TREE *call_signal_tree_top        = NULL;
-CALL_SIGNAL_TREE *call_signal_tree_current    = NULL;
-CALL_SIGNAL_TREE *call_signal_tree_prev       = NULL;
-
-/*!
- * @brief	CALL命令の登録
- */
-int insert_call_tree()
-{
-    if(call_tree_top == NULL){
-        call_tree_top     = (CALL_TREE *)malloc(sizeof(CALL_TREE));
-        memset(call_tree_top, 0, sizeof(CALL_TREE));
-        call_tree_current = call_tree_top;
-    }else{
-        call_tree_current->next_ptr   = (CALL_TREE *)malloc(sizeof(CALL_TREE));
-        memset(call_tree_current->next_ptr, 0, sizeof(CALL_TREE));
-        call_tree_prev                = call_tree_current;
-        call_tree_current             = call_tree_current->next_ptr;
-        call_tree_current->prev_ptr   = call_tree_prev;
-        call_tree_current->next_ptr   = NULL;
-    }
-    return 0;
-}
+CALL_TREE *call_tree_top				= NULL;
+CALL_SIGNAL_TREE *call_signal_tree_top	= NULL;
 
 /*!
  * @brief	CALL命令の削除
@@ -73,13 +49,12 @@ int clean_call_tree()
     now_call_tree = call_tree_top;
     while(now_call_tree != NULL){
         new_call_tree = now_call_tree->next_ptr;
-        if(now_call_tree->call_name != NULL) free(now_call_tree->call_name);
-        if(now_call_tree->verilog != NULL) free(now_call_tree->verilog);
+        if(now_call_tree->call_name != NULL)	free(now_call_tree->call_name);
+        if(now_call_tree->verilog != NULL)	free(now_call_tree->verilog);
         free(now_call_tree);
         now_call_tree = new_call_tree;
     }
     call_tree_top = NULL;
-    call_tree_current = call_tree_top;
     return 0;
 }
 
@@ -96,14 +71,27 @@ int clean_call_tree()
  */
 int is_call_tree(char *call_name)
 {
-	CALL_TREE *now_call_tree;
+	CALL_TREE *now_call_tree = NULL;
 	now_call_tree = call_tree_top;
 	while(now_call_tree != NULL){
 		if(!strcmp(now_call_tree->call_name, call_name)) return 1;
 		now_call_tree = now_call_tree->next_ptr;
 	}
-
     return 0;
+}
+
+/*
+ * @brief	CALL名を検索しツリーを返す
+ */
+CALL_TREE * search_call_tree(char *call_name)
+{
+	CALL_TREE *now_call_tree = NULL;
+	now_call_tree = call_tree_top;
+	while(now_call_tree != NULL){
+		if(!strcmp(now_call_tree->call_name, call_name)) return now_call_tree;
+		now_call_tree = now_call_tree->next_ptr;
+	}
+    return NULL;
 }
 
 /*!
@@ -118,42 +106,35 @@ int is_call_tree(char *call_name)
  */
 int register_call_tree(char *call_name)
 {
-	if(!is_call_tree(call_name)){
-		insert_call_tree();
+	CALL_TREE *now_call_tree		= NULL;
+	CALL_TREE *old_call_tree		= NULL;
 
-		call_tree_current->call_name = calloc(strlen(call_name)+1,1);
-		strcpy(call_tree_current->call_name, call_name);
+	if(!is_call_tree(call_name)){
+		now_call_tree = call_tree_top;
+		while(now_call_tree != NULL){
+			old_call_tree = now_call_tree;
+			now_call_tree = now_call_tree->next_ptr;
+		}
+
+		now_call_tree				= (CALL_TREE *)calloc(sizeof(CALL_TREE),1);
+		now_call_tree->prev_ptr	= old_call_tree;
+		now_call_tree->next_ptr	= NULL;
+
+		if(call_tree_top == NULL){
+			call_tree_top				= now_call_tree;
+		}else{
+			old_call_tree->next_ptr	= now_call_tree;
+		}
+		now_call_tree->signal_top_ptr = NULL;
+
+		now_call_tree->call_name = calloc(strlen(call_name)+1,1);
+		strcpy(now_call_tree->call_name, call_name);
 	}else{
 		// 既に生成されている
 		return -1;
 	}
 
 	return 0;
-}
-
-/*!
- * @brief	CALL命令の信号登録
- */
-int insert_call_signal_tree()
-{
-	/*
-	 * ToDo:
-	 * ここは綺麗にする必要がある。
-	 */
-    if(call_tree_current->signal_top_ptr == NULL){
-        call_signal_tree_top     = (CALL_SIGNAL_TREE *)malloc(sizeof(CALL_SIGNAL_TREE));
-        memset(call_signal_tree_top, 0, sizeof(CALL_SIGNAL_TREE));
-        call_signal_tree_current = call_signal_tree_top;
-        call_tree_current->signal_top_ptr = call_signal_tree_top;
-    }else{
-        call_signal_tree_current->next_ptr   = (CALL_SIGNAL_TREE *)malloc(sizeof(CALL_SIGNAL_TREE));
-        memset(call_signal_tree_current->next_ptr, 0, sizeof(CALL_SIGNAL_TREE));
-        call_signal_tree_prev                = call_signal_tree_current;
-        call_signal_tree_current             = call_signal_tree_current->next_ptr;
-        call_signal_tree_current->prev_ptr   = call_signal_tree_prev;
-        call_signal_tree_current->next_ptr   = NULL;
-    }
-    return 0;
 }
 
 /*!
@@ -166,14 +147,34 @@ int insert_call_signal_tree()
  */
 int register_call_signal_tree(char *call_name, char *signal_name, int num, int size, int inout)
 {
-	insert_call_signal_tree();
+	CALL_TREE *now_call_tree;
+	CALL_SIGNAL_TREE *now_call_signal_tree = NULL;
+	CALL_SIGNAL_TREE *old_call_signal_tree = NULL;
 
-	call_signal_tree_current->signal_name = calloc(strlen(signal_name)+1,1);
-	strcpy(call_signal_tree_current->signal_name, signal_name);
+	now_call_tree = search_call_tree(call_name);
+	
+	now_call_signal_tree = now_call_tree->signal_top_ptr;
+	while(now_call_signal_tree != NULL){
+		old_call_signal_tree = now_call_signal_tree;
+		now_call_signal_tree = now_call_signal_tree->next_ptr;
+	}
 
-	call_signal_tree_current->inout	= inout;
-	call_signal_tree_current->num	= num;
-	call_signal_tree_current->size	= size;
+	now_call_signal_tree				= (CALL_SIGNAL_TREE *)calloc(sizeof(CALL_SIGNAL_TREE),1);
+	now_call_signal_tree->prev_ptr	= old_call_signal_tree;
+	now_call_signal_tree->next_ptr	= NULL;
+
+	if(now_call_tree->signal_top_ptr == NULL){
+		now_call_tree->signal_top_ptr				= now_call_signal_tree;
+	}else{
+		old_call_signal_tree->next_ptr	= now_call_signal_tree;
+	}
+
+	now_call_signal_tree->signal_name = calloc(strlen(signal_name)+1,1);
+	strcpy(now_call_signal_tree->signal_name, signal_name);
+
+	now_call_signal_tree->inout	= inout;
+	now_call_signal_tree->num	= num;
+	now_call_signal_tree->size	= size;
 
 	return 0;
 }

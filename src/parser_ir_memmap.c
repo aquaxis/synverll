@@ -16,12 +16,16 @@
  * @author	Hidemi Ishiahra
  *
  * @note
- * メモリマップ
+ * メモリマップを管理します。
+ *
+ * @todo
+ * メモリマップの整列を行う。
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -82,7 +86,6 @@ int register_memmap_tree(char *module, char *label, int size)
 
 	unsigned int new_adrs = 0;
 
-
 	if(!is_memmap_tree(module, label)){
 		// メモリマップに存在しなければ新規登録
 		now_memmap_tree = memmap_tree_top;
@@ -91,22 +94,22 @@ int register_memmap_tree(char *module, char *label, int size)
 			now_memmap_tree = now_memmap_tree->next_ptr;
 		}
 
+		now_memmap_tree				= (MEMMAP_TREE *)calloc(sizeof(MEMMAP_TREE),1);
+		now_memmap_tree->prev_ptr	= old_memmap_tree;
+		now_memmap_tree->next_ptr	= NULL;
+
+		if(memmap_tree_top == NULL){
+			memmap_tree_top				= now_memmap_tree;
+		}else{
+			old_memmap_tree->next_ptr	= now_memmap_tree;
+		}
+
 		// 新しいアドレスの作成
 		if(old_memmap_tree != NULL){
 			// アドレスは4Byteアライメントに揃える
 			new_adrs = (old_memmap_tree->adrs + old_memmap_tree->size + 3) & 0xFFFFFFC;
 		}else{
 			new_adrs = 0;
-		}
-
-		now_memmap_tree				= (MEMMAP_TREE *)calloc(sizeof(MEMMAP_TREE),1);
-		now_memmap_tree->prev_ptr	= old_memmap_tree;
-		now_memmap_tree->next_ptr	= NULL;
-
-		if(memmap_tree_top == NULL){
-			memmap_tree_top     = now_memmap_tree;
-		}else{
-			old_memmap_tree->next_ptr   = now_memmap_tree;
 		}
 
 		now_memmap_tree->label = calloc(strlen(label)+1,1);

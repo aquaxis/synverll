@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -471,7 +472,7 @@ int create_top_nowire(FILE *fp)
 
 	now_top_signal_tree = top_signal_tree_top;
     while(now_top_signal_tree != NULL){
-		if((now_top_signal_tree->used == 0)){
+		if(now_top_signal_tree->used == 0){
 			if(now_top_signal_tree->flag == FLAG_ARGS){
 				if(now_top_signal_tree->inout == SIG_IN){
 					fprintf(fp, "\tinput ");
@@ -528,15 +529,15 @@ int create_top_nofunc(FILE *fp)
  */
 int create_top_global(FILE *fp)
 {
-	MODULE_STACK *now_module_stack = NULL;
+	MODULE_TREE *now_module_tree = NULL;
 	MEMORY_TREE *now_memory_tree = NULL;
 
 	char *label;
 	label				= calloc(STR_MAX, 1);
 
-    now_module_stack = module_stack_top;
-    while(now_module_stack != NULL){
-			now_memory_tree = now_module_stack->module_tree_ptr->memory_tree_ptr;
+    now_module_tree = module_tree_top;
+    while(now_module_tree != NULL){
+			now_memory_tree = now_module_tree->memory_tree_ptr;
 			while(now_memory_tree != NULL){
 				if(now_memory_tree->flag == MEMORY_FLAG_GLOBAL){
 					sprintf(label, "%s", convname(sep_p(now_memory_tree->label)));
@@ -544,7 +545,7 @@ int create_top_global(FILE *fp)
 				}
 				now_memory_tree = now_memory_tree->next_ptr;
 			}
-        now_module_stack = now_module_stack->next_ptr;
+        now_module_tree = now_module_tree->next_ptr;
 	}
 
 	return 0;
@@ -555,7 +556,7 @@ int create_top_global(FILE *fp)
  */
 int create_top_module()
 {
-	MODULE_STACK *now_module_stack = NULL;
+	MODULE_TREE *now_module_tree = NULL;
 	MEMORY_TREE *now_memory_tree = NULL;
 	CALL_TREE *now_call_tree = NULL;
 	CALL_SIGNAL_TREE *now_call_signal_tree = NULL;
@@ -576,12 +577,12 @@ int create_top_module()
 	verilog_wire		= calloc(STR_MAX, 1);
 	verilog_module		= calloc(STR_MAX, 1);
 
-    now_module_stack = module_stack_top;
-    while(now_module_stack != NULL){
+    now_module_tree = module_tree_top;
+    while(now_module_tree != NULL){
 		// 初期化
 		args_num = 0;
-		module_name = calloc(strlen(now_module_stack->module_tree_ptr->module_name)+1,1);
-		strcpy(module_name, convname(sep_p(now_module_stack->module_tree_ptr->module_name)));
+		module_name = calloc(strlen(now_module_tree->module_name)+1,1);
+		strcpy(module_name, convname(sep_p(now_module_tree->module_name)));
 
 		// モジュール宣言
 		sprintf(verilog_module, "%s u_%s(\n", module_name, module_name);
@@ -625,7 +626,7 @@ int create_top_module()
 		// メモリバスの生成
 		sprintf(verilog_module, "\t// memory bus\n");
 		register_top_module_decl(verilog_module);
-		if(now_module_stack->module_tree_ptr->is_module_gm_if){
+		if(now_module_tree->is_module_gm_if){
 			use_gm_if = 1;
 
 			// __gm_base(in)
@@ -695,7 +696,7 @@ int create_top_module()
 		sprintf(verilog_module, "\t// base address\n");
 		register_top_module_decl(verilog_module);
 		{
-			now_memory_tree = now_module_stack->module_tree_ptr->memory_tree_ptr;
+			now_memory_tree = now_module_tree->memory_tree_ptr;
 			while(now_memory_tree != NULL){
 				if(now_memory_tree->flag == MEMORY_FLAG_GLOBAL){
 					sprintf(label, "%s", convname(sep_p(now_memory_tree->label)));
@@ -716,7 +717,7 @@ int create_top_module()
 		register_top_module_decl(verilog_module);
 		args_num = 0;
 		{
-			now_memory_tree = now_module_stack->module_tree_ptr->memory_tree_ptr;
+			now_memory_tree = now_module_tree->memory_tree_ptr;
 			while(now_memory_tree != NULL){
 				if(now_memory_tree->flag == MEMORY_FLAG_REGISTER){
 					sprintf(label, "__args_%s", convname(sep_p(now_memory_tree->label)));
@@ -745,7 +746,7 @@ int create_top_module()
 		sprintf(verilog_module, "\t// call instruction\n");
 		register_top_module_decl(verilog_module);
 		{
-			now_call_tree = now_module_stack->module_tree_ptr->call_tree_ptr;
+			now_call_tree = now_module_tree->call_tree_ptr;
 			while(now_call_tree != NULL){
 				now_call_signal_tree = now_call_tree->signal_top_ptr;
 				while(now_call_signal_tree != NULL){
@@ -792,7 +793,7 @@ int create_top_module()
 		register_top_module_decl(verilog_module);
 
 		{
-			now_memory_tree = now_module_stack->module_tree_ptr->memory_tree_ptr;
+			now_memory_tree = now_module_tree->memory_tree_ptr;
 			while(now_memory_tree != NULL){
 				if(now_memory_tree->flag == MEMORY_FLAG_RETURN){
 					if(strcmp(now_memory_tree->type, "void")){
@@ -820,7 +821,7 @@ int create_top_module()
 		sprintf(verilog_module, ");\n");
 		register_top_module_decl(verilog_module);
 
-        now_module_stack = now_module_stack->next_ptr;
+        now_module_tree = now_module_tree->next_ptr;
 
         free(module_name);
     }

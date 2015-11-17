@@ -15,6 +15,7 @@
  * @brief	メモリツリー
  * @author	Hidemi Ishiahra
  *
+ * @note
  * 関数内のグローバル変数、グローバル構造体、グローバルメモリのツリー構築
  * モジュールの引数の登録もここで行う
  */
@@ -22,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -35,42 +37,44 @@
 #include "parser_ir_top.h"
 
 MEMORY_TREE *memory_tree_top        = NULL;
-MEMORY_TREE *memory_tree_current    = NULL;
-MEMORY_TREE *memory_tree_prev       = NULL;
-
 MODULE_TREE *module_tree_top        = NULL;
-MODULE_TREE *module_tree_current    = NULL;
-MODULE_TREE *module_tree_prev       = NULL;
-
 MODULE_STACK *module_stack_top		= NULL;
 
 extern int is_module_gm_if;
 
 /*!
- * @brief	メモリツリー登録
+ * @brief	メモリツリーの領域確保
  */
-int insert_memory_tree()
-{
-    if(memory_tree_top == NULL){
-        memory_tree_top     = (MEMORY_TREE *)malloc(sizeof(MEMORY_TREE));
-        memset(memory_tree_top, 0, sizeof(MEMORY_TREE));
-        memory_tree_current = memory_tree_top;
-    }else{
-        memory_tree_current->next_ptr   = (MEMORY_TREE *)malloc(sizeof(MEMORY_TREE));
-        memset(memory_tree_current->next_ptr, 0, sizeof(MEMORY_TREE));
-        memory_tree_prev                = memory_tree_current;
-        memory_tree_current             = memory_tree_current->next_ptr;
-        memory_tree_current->prev_ptr   = memory_tree_prev;
-        memory_tree_current->next_ptr   = NULL;
-    }
-    return 0;
+MEMORY_TREE * alloc_memory_tree(){
+	MEMORY_TREE *now_memory_tree		= NULL;
+	MEMORY_TREE *old_memory_tree		= NULL;
+
+	// メモリツリーに存在しなければ新規登録
+	now_memory_tree = memory_tree_top;
+	while(now_memory_tree != NULL){
+		old_memory_tree = now_memory_tree;
+		now_memory_tree = now_memory_tree->next_ptr;
+	}
+
+	now_memory_tree				= (MEMORY_TREE *)calloc(sizeof(MEMORY_TREE),1);
+	now_memory_tree->prev_ptr	= old_memory_tree;
+	now_memory_tree->next_ptr	= NULL;
+
+	if(memory_tree_top == NULL){
+		memory_tree_top				= now_memory_tree;
+	}else{
+		old_memory_tree->next_ptr	= now_memory_tree;
+	}
+
+	return now_memory_tree;
 }
 
+/*!
+ * @brief	メモリツリーを新しくする？
+ */
 int new_memory_tree()
 {
 	memory_tree_top        = NULL;
-	memory_tree_current    = NULL;
-	memory_tree_prev       = NULL;
 	return 0;
 }
 
@@ -85,14 +89,13 @@ int clean_memory_tree(MEMORY_TREE *memory_tree_ptr)
     now_memory_tree = memory_tree_ptr;
     while(now_memory_tree != NULL){
         new_memory_tree = now_memory_tree->next_ptr;
-        if(now_memory_tree->label != NULL) free(now_memory_tree->label);
-        if(now_memory_tree->verilog_args != NULL) free(now_memory_tree->verilog_args);
-        if(now_memory_tree->type != NULL) free(now_memory_tree->type);
+        if(now_memory_tree->label != NULL)		free(now_memory_tree->label);
+        if(now_memory_tree->verilog_args != NULL)	free(now_memory_tree->verilog_args);
+        if(now_memory_tree->type != NULL)			free(now_memory_tree->type);
         free(now_memory_tree);
         now_memory_tree = new_memory_tree;
     }
     memory_tree_top = NULL;
-    memory_tree_current = memory_tree_top;
 
 	if(module_name != NULL){
 		free(module_name);
@@ -102,95 +105,73 @@ int clean_memory_tree(MEMORY_TREE *memory_tree_ptr)
     return 0;
 }
 
-
 /*!
  * @brief	メモリツリーのVerilog HDL表示
+ *
+ * @param	flag 0 args出力
+ * @param	flag 1 return出力
+ * @param	flag 2 proc出力
+ * @param	flag 3 decl(宣言)出力
  */
-int output_memory_tree(FILE *fp)
+int output_memory_tree(FILE *fp, int flag)
 {
 	MEMORY_TREE *now_memory_tree;
 
     now_memory_tree = memory_tree_top;
     while(now_memory_tree != NULL){
-		if(now_memory_tree->verilog_args != NULL){
-			if(strlen(now_memory_tree->verilog_args) > 0){
-				if(
-					(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1) &&
-					(now_memory_tree->flag != MEMORY_FLAG_RETURN)
-				){
-					fprintf(fp, "%s\n", now_memory_tree->verilog_args);
-				}else if(now_memory_tree->flag == MEMORY_FLAG_RETURN){
-
-				}else{
-					now_memory_tree->flag = MEMORY_FLAG_LOCAL;
+		switch(flag){
+			case 0:
+				// 引数の表示
+				if(now_memory_tree->verilog_args != NULL){
+					if(strlen(now_memory_tree->verilog_args) > 0){
+						if(
+							(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1) &&
+							(now_memory_tree->flag != MEMORY_FLAG_RETURN)
+						){
+							fprintf(fp, "%s\n", now_memory_tree->verilog_args);
+						}else if(now_memory_tree->flag == MEMORY_FLAG_RETURN){
+						}else{
+							now_memory_tree->flag = MEMORY_FLAG_LOCAL;
+						}
+					}
 				}
-			}
-		}
-        now_memory_tree = now_memory_tree->next_ptr;
-    }
-    return 0;
-}
-
-/*!
- * @brief	メモリツリーのVerilog HDL表示
- */
-int output_memory_tree_return(FILE *fp)
-{
-	MEMORY_TREE *now_memory_tree;
-
-    now_memory_tree = memory_tree_top;
-    while(now_memory_tree != NULL){
-		if(now_memory_tree->verilog_args != NULL){
-			if(strlen(now_memory_tree->verilog_args) > 0){
-				if(
-					(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1) &&
-					(now_memory_tree->flag == MEMORY_FLAG_RETURN)
-				){
-					fprintf(fp, "%s\n", now_memory_tree->verilog_args);
+				break;
+			case 1:
+				// returnの表示
+				if(now_memory_tree->verilog_args != NULL){
+					if(strlen(now_memory_tree->verilog_args) > 0){
+						if(
+							(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1) &&
+							(now_memory_tree->flag == MEMORY_FLAG_RETURN)
+						){
+							fprintf(fp, "%s\n", now_memory_tree->verilog_args);
+						}
+					}
 				}
-			}
-		}
-        now_memory_tree = now_memory_tree->next_ptr;
-    }
-    return 0;
-}
-
-/*!
- * @brief	動作のVerilog HDL表示
- */
-int output_memory_tree_proc(FILE *fp)
-{
-	MEMORY_TREE *now_memory_tree;
-
-    now_memory_tree = memory_tree_top;
-    while(now_memory_tree != NULL){
-		if(now_memory_tree->verilog_proc != NULL){
-			if(strlen(now_memory_tree->verilog_proc) > 0){
-				if(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1){
-					fprintf(fp, "%s\n", now_memory_tree->verilog_proc);
+				break;
+			case 2:
+				// 宣言の表示
+				if(now_memory_tree->verilog_decl != NULL){
+					if(strlen(now_memory_tree->verilog_decl) > 0){
+						if(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1){
+							fprintf(fp, "%s\n", now_memory_tree->verilog_decl);
+						}
+					}
 				}
-			}
-		}
-        now_memory_tree = now_memory_tree->next_ptr;
-    }
-    return 0;
-}
-
-/*!
- * @brief	宣言のVerilog HDL表示
- */
-int output_memory_tree_decl(FILE *fp)
-{
-	MEMORY_TREE *now_memory_tree;
-
-    now_memory_tree = memory_tree_top;
-    while(now_memory_tree != NULL){
-		if(now_memory_tree->verilog_decl != NULL){
-			if(strlen(now_memory_tree->verilog_decl) > 0){
-				if(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1){
-					fprintf(fp, "%s\n", now_memory_tree->verilog_decl);
+				break;
+			case 3:
+				// procの表示
+				if(now_memory_tree->verilog_proc != NULL){
+					if(strlen(now_memory_tree->verilog_proc) > 0){
+						if(get_adrs_memmap("GLOBAL", now_memory_tree->label) == -1){
+							fprintf(fp, "%s\n", now_memory_tree->verilog_proc);
+						}
+					}
 				}
-			}
+				break;
+			default:
+				printf("[ERROR] output_memory_tree()\n");
+				break;
 		}
         now_memory_tree = now_memory_tree->next_ptr;
     }
@@ -303,16 +284,17 @@ int deploy_array_type()
  */
 int parser_memory_tree()
 {
-	PARSER_TREE_IR *now_parser_tree_ir;
+	MEMORY_TREE		*memory_tree_current;
+	PARSER_TREE_IR	*now_parser_tree_ir;
 	char *line;
 	char token[STR_MAX];
 	char type[STR_MAX];
 	char verilog_args[STR_MAX];
 	char verilog_proc[STR_MAX];
 	char verilog_decl[STR_MAX];
-	int size;
 	char *str;
 	int num = 0;
+	int width;
 
     printf(" -> Parser Memory Tree\n");
 
@@ -325,8 +307,8 @@ int parser_memory_tree()
 			// stage = 0のみ対象
 			switch(now_parser_tree_ir->flag){
 				case PARSER_IR_FLAG_ARRAY:
-//					if(get_adrs_memmap("GLOBAL", now_parser_tree_ir->label) == -1){
-						insert_memory_tree();
+						memory_tree_current = alloc_memory_tree();
+						
 						memory_tree_current->label	= charalloc(now_parser_tree_ir->label);
 						memory_tree_current->type	= charalloc(now_parser_tree_ir->array.type);
 						memory_tree_current->num	= -1;
@@ -339,7 +321,6 @@ int parser_memory_tree()
 						memory_tree_current->verilog_args = charalloc(verilog_args);
 						memory_tree_current->verilog_proc = charalloc(verilog_proc);
 						memory_tree_current->verilog_decl = charalloc(verilog_decl);
-//					}
 					break;
 				default:
 					// ARRAY以外は処理の対象外
@@ -368,8 +349,7 @@ int parser_memory_tree()
 						strcpy(type, token);
 						if(is_pointer_type(token)){
 							// ポインタの場合
-							insert_memory_tree();
-//							memory_tree_current->flag = MEMORY_FLAG_POINTER;
+							memory_tree_current = alloc_memory_tree();
 							memory_tree_current->flag = MEMORY_FLAG_REGISTER;
 							memory_tree_current->num = num++;
 
@@ -397,66 +377,23 @@ int parser_memory_tree()
 							);
 
 							memory_tree_current->label = charalloc(token);
-							/*
-							 * typeがi8*,i16*,i32*の場合は、変数のポインタである。
-							 */
-							if(
-								!strcmp(type, "i8*") ||
-								!strcmp(type, "i16*") ||
-								!strcmp(type, "i32*")
-							){
-								// 変数型ポインタ
-
-								type[strlen(type) -1] = '\0';	// "*"を削除する
-								memory_tree_current->type = charalloc(type);
-								memory_tree_current->size = 4;	// 無条件で32bit
-
-								str = charalloc(memory_tree_current->label);
-//								sprintf(verilog_args, "\tinput [31:0] __base_%s,", convname(sep_p(str)));
-//								sprintf(verilog_proc, "\t\t\t__sig_%s <= __base_%s;", convname(sep_p(str)), convname(sep_p(str)));
-								sprintf(verilog_args, "\tinput [31:0] __args_%s,", convname(sep_p(str)));
-								sprintf(verilog_proc, "\t\t\t__sig_%s <= __args_%s;", convname(sep_p(str)), convname(sep_p(str)));
-								sprintf(verilog_decl, "\treg [31:0] __sig_%s;", convname(sep_p(str)));
-								free(str);
-							}else{
-								// 構造体(ポインタ)
-								if(token[0] == '%'){
-									// グローバル構造体の場合
-									type[strlen(type) -1] = '\0';	// "*"を削除する
-									size = 4;
+							{
+								width = get_width(type);
 									str = charalloc(memory_tree_current->label);
-//									sprintf(verilog_args, "\tinput [%d:0] __base_%s,", (size*8-1), convname(sep_p(str)));
-//									sprintf(verilog_proc, "\t\t\t__sig_%s <= __base_%s;", convname(sep_p(str)), convname(sep_p(str)));
-									sprintf(verilog_args, "\tinput [%d:0] __args_%s,", (size*8-1), convname(sep_p(str)));
+									sprintf(verilog_args, "\tinput [%d:0] __args_%s,", (width-1), convname(sep_p(str)));
 									sprintf(verilog_proc, "\t\t\t__sig_%s <= __args_%s;", convname(sep_p(str)), convname(sep_p(str)));
-									sprintf(verilog_decl, "\treg [%d:0] __sig_%s;", (size*8-1), convname(sep_p(str)));
+									sprintf(verilog_decl, "\treg [%d:0] __sig_%s;", (width-1), convname(sep_p(str)));
 									free(str);
-								}else{
-									// 変数の場合
-									if(!strcmp(type, "i8")){
-										size = 1;
-									}else if(!strcmp(type, "i16")){
-										size = 2;
-									}else if(!strcmp(type, "i32")){
-										size = 4;
-									}else{
-										size = 4;
-									}
-									str = charalloc(memory_tree_current->label);
-									sprintf(verilog_args, "\tinput [%d:0] __args_%s,", (size*8-1), convname(sep_p(str)));
-									sprintf(verilog_proc, "\t\t\t__sig_%s <= __args_%s;", convname(sep_p(str)), convname(sep_p(str)));
-									sprintf(verilog_decl, "\treg [%d:0] __sig_%s;", (size*8-1), convname(sep_p(str)));
-									free(str);
-								}
+								convtype(type);
 								memory_tree_current->type = charalloc(type);
-								memory_tree_current->size = size;
+								memory_tree_current->size = width/4;
 							}
 						}else{
 							/*
 							 * 変数の場合は処理をしません。
 							 * タイプで入力サイズを変えなければいけないかもしれない。
 							 */
-							insert_memory_tree();
+							memory_tree_current = alloc_memory_tree();
 							memory_tree_current->num = num++;
 							memory_tree_current->flag = MEMORY_FLAG_REGISTER;
 
@@ -483,25 +420,14 @@ int parser_memory_tree()
 
 							memory_tree_current->label = charalloc(token);
 
-							if(!strcmp(type, "i8")){
-								size = 1;
-							}else if(!strcmp(type, "i16")){
-								size = 2;
-							}else if(!strcmp(type, "i32")){
-								size = 4;
-							}else{
-								size = 4;
-							}
+							width = get_width(type);
 
-							sprintf(verilog_args, "\tinput [%d:0] __args_%s,", (size*8-1), convname(sep_p(token)));
+							sprintf(verilog_args, "\tinput [%d:0] __args_%s,", (width-1), convname(sep_p(token)));
 							sprintf(verilog_proc, "\t\t\t__sig_%s <= __args_%s;", convname(sep_p(token)), convname(sep_p(token)));
-							sprintf(verilog_decl, "\treg [%d:0] __sig_%s;", (size*8-1), convname(sep_p(token)));
-//							sprintf(verilog_args, "\tinput [31:0] __args_%s,", sep_p(memory_tree_current->label));
-//							sprintf(verilog_proc, "\t\t\t__sig_%s <= __args_%s;", sep_p(memory_tree_current->label), sep_p(memory_tree_current->label));
-//							sprintf(verilog_decl, "\treg [31:0] __sig_%s;", sep_p(memory_tree_current->label));
+							sprintf(verilog_decl, "\treg [%d:0] __sig_%s;", (width-1), convname(sep_p(token)));
 
 							memory_tree_current->type = charalloc(type);
-							memory_tree_current->size = size;
+							memory_tree_current->size = width/8;
 						}
 						memory_tree_current->verilog_args = charalloc(verilog_args);
 						memory_tree_current->verilog_proc = charalloc(verilog_proc);
@@ -520,7 +446,7 @@ int parser_memory_tree()
 					/*
 					 * allocaされているメモリを登録する
 					 */
-					insert_memory_tree();
+					memory_tree_current = alloc_memory_tree();
 					memory_tree_current->label = charalloc(now_parser_tree_ir->label);
 					memory_tree_current->type = charalloc(now_parser_tree_ir->alloca.type);
 					memory_tree_current->flag = MEMORY_FLAG_LOCAL;
@@ -528,31 +454,16 @@ int parser_memory_tree()
 					break;
 
 				case PARSER_IR_FLAG_RETURN:
-					insert_memory_tree();
+					memory_tree_current = alloc_memory_tree();
 					memory_tree_current->flag = MEMORY_FLAG_RETURN;
 
 					if(strcmp(now_parser_tree_ir->ret.type, "void")){
-						// レングス
-						if(!strcmp(now_parser_tree_ir->ret.type, "i8")){
-							size = 1;
-						}else if(!strcmp(now_parser_tree_ir->ret.type, "i16")){
-							size = 2;
-						}else if(!strcmp(now_parser_tree_ir->ret.type, "i32")){
-							size = 4;
-						}else{
-							/*
-							 * ToDo:
-							 * ちゃんと処理すること。いまのところ暫定だよ。
-							 */
-							size = 4;
-							printf("[WRANING] LENGTH: %s\n", now_parser_tree_ir->ret.type);
-						}
-
+						width = get_width(now_parser_tree_ir->ret.type);
 						memory_tree_current->label = charalloc(now_parser_tree_ir->ret.name);
 						memory_tree_current->type = charalloc(now_parser_tree_ir->ret.type);
-						memory_tree_current->size = size;
+						memory_tree_current->size = width/8;
 
-						sprintf(verilog_args, "\toutput reg [%d:0] __func_result\n", (size*8-1));
+						sprintf(verilog_args, "\toutput reg [%d:0] __func_result\n", (width-1));
 					}else{
 						memory_tree_current->label = charalloc("");
 						memory_tree_current->type = charalloc("void");
@@ -679,7 +590,6 @@ int __get_array_size(char *type, char *ptr, char *rslt_ptr)
 			buf_ptr = charalloc(ptr);
 		}
 	}
-
 
 	/*
 	 * ポインタの位置の検出
@@ -864,8 +774,6 @@ int create_array_size()
 		size = get_memory_size(now_memory_tree->label, NULL, NULL);
 
 		if(size <= 0){
-			// サイズがない場合は強制的に4Byteにする
-			// サイズがないケースはグローバル変数で、見えていないところにあるケースがある。
 			size = 0;
 		}
 
@@ -877,7 +785,6 @@ int create_array_size()
 			register_memmap_tree(module_name, now_memory_tree->label, size);
 		}else if(now_memory_tree->flag == MEMORY_FLAG_POINTER){
 			// ポインタ
-//			register_memmap_tree(module_name, now_memory_tree->label, size);
 			register_memmap_tree(module_name, now_memory_tree->label, 0);
 		}
 
@@ -886,26 +793,6 @@ int create_array_size()
 	if(now_memory_tree == NULL) return MEMORY_FLAG_UNKNWON;
 
 	return 0;
-}
-
-/*!
- * @brief	モジュールツリー登録
- */
-int insert_module_tree()
-{
-    if(module_tree_top == NULL){
-        module_tree_top     = (MODULE_TREE *)malloc(sizeof(MODULE_TREE));
-        memset(module_tree_top, 0, sizeof(MODULE_TREE));
-        module_tree_current = module_tree_top;
-    }else{
-        module_tree_current->next_ptr   = (MODULE_TREE *)malloc(sizeof(MODULE_TREE));
-        memset(module_tree_current->next_ptr, 0, sizeof(MODULE_TREE));
-        module_tree_prev                = module_tree_current;
-        module_tree_current             = module_tree_current->next_ptr;
-        module_tree_current->prev_ptr   = module_tree_prev;
-        module_tree_current->next_ptr   = NULL;
-    }
-    return 0;
 }
 
 /*!
@@ -926,7 +813,6 @@ int clean_module_tree()
         now_module_tree = new_module_tree;
     }
     module_tree_top = NULL;
-    module_tree_current = module_tree_top;
     return 0;
 }
 
@@ -945,17 +831,37 @@ int search_module_tree(char *module, char label)
 
     return 0;
 }
+
 /*!
  * @brief	モジュールとメモリツリー、CALLツリーのポインタを登録する
  */
 int register_module_tree(char *module_name)
 {
-	insert_module_tree();
-	module_tree_current->module_name = calloc(strlen(module_name)+1,1);
-	strcpy(module_tree_current->module_name, module_name);
-	module_tree_current->memory_tree_ptr	= memory_tree_top;
-	module_tree_current->call_tree_ptr		= call_tree_top;
-	module_tree_current->is_module_gm_if	= is_module_gm_if;
+	MODULE_TREE *now_module_tree = NULL;
+	MODULE_TREE *old_module_tree = NULL;
+
+	// モジュールツリーに存在しなければ新規登録
+	now_module_tree = module_tree_top;
+	while(now_module_tree != NULL){
+		old_module_tree = now_module_tree;
+		now_module_tree = now_module_tree->next_ptr;
+	}
+
+	now_module_tree				= (MODULE_TREE *)calloc(sizeof(MODULE_TREE),1);
+	now_module_tree->prev_ptr	= old_module_tree;
+	now_module_tree->next_ptr	= NULL;
+
+	if(module_tree_top == NULL){
+		module_tree_top				= now_module_tree;
+	}else{
+		old_module_tree->next_ptr	= now_module_tree;
+	}
+
+	now_module_tree->module_name = calloc(strlen(module_name)+1,1);
+	strcpy(now_module_tree->module_name, module_name);
+	now_module_tree->memory_tree_ptr	= memory_tree_top;
+	now_module_tree->call_tree_ptr		= call_tree_top;
+	now_module_tree->is_module_gm_if	= is_module_gm_if;
 
 	return 0;
 }
@@ -983,92 +889,12 @@ int print_module_tree(FILE *fp)
 }
 
 /*!
- * @brief	最後のモジュールスタックの取得
- */
-int get_module_stack_last(MODULE_STACK **last_module_stack)
-{
-	MODULE_STACK *now_module_stack = NULL;
-	MODULE_STACK *old_module_stack = NULL;
-
-    now_module_stack = module_stack_top;
-    while(now_module_stack != NULL){
-		old_module_stack = now_module_stack;
-        now_module_stack = now_module_stack->next_ptr;
-    }
-
-    *last_module_stack = old_module_stack;
-
-    return 0;
-}
-
-/*!
  * @brief	モジュールスタックの登録
  */
-int insert_module_stack()
+int new_module_tree()
 {
-	MODULE_STACK *now_module_stack = NULL;
-	MODULE_STACK *new_module_stack = NULL;
-
-	new_module_stack     = (MODULE_STACK *)malloc(sizeof(MODULE_STACK));
-	memset(new_module_stack, 0, sizeof(MODULE_STACK));
-
-    if(module_stack_top == NULL){
-        module_stack_top	= new_module_stack;
-    }else{
-		get_module_stack_last(&now_module_stack);
-        now_module_stack->next_ptr	= new_module_stack;
-        new_module_stack->prev_ptr	= now_module_stack;
-    }
-
-	// モジュールツリーのポインタ登録
-	new_module_stack->module_tree_ptr = module_tree_current;
-
-    return 0;
-}
-
-/*!
- * @brief	モジュールスタックの登録
- */
-int new_module_stack()
-{
-	// モジュールツリーがない場合は登録しない
-	if(module_tree_current != NULL){
-		insert_module_stack();
-	}else{
-		printf("not module tree\n");
-	}
-
 	memory_tree_top        = NULL;
-	memory_tree_current    = NULL;
-	memory_tree_prev       = NULL;
-
-	module_tree_top        = NULL;
-	module_tree_current    = NULL;
-	module_tree_prev       = NULL;
-
 	call_tree_top        = NULL;
-	call_tree_current    = NULL;
-	call_tree_prev       = NULL;
 
 	return 0;
-}
-
-/*!
- * @brief	モジュールスタックの表示
- */
-int print_module_stack_list()
-{
-	MODULE_STACK *now_module_stack = NULL;
-
-	printf("[Module Stack List]\n");
-
-    now_module_stack = module_stack_top;
-    while(now_module_stack != NULL){
-		printf("%s\n", now_module_stack->module_tree_ptr->module_name);
-		print_memory_tree(now_module_stack->module_tree_ptr->memory_tree_ptr);
-		print_call_tree(now_module_stack->module_tree_ptr->call_tree_ptr);
-        now_module_stack = now_module_stack->next_ptr;
-    }
-
-    return 0;
 }

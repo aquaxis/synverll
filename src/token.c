@@ -23,6 +23,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 
@@ -36,8 +37,10 @@ TOKEN_ORDER *token_order_prev       = NULL;
  * @param[in] code 漢字チェックするコードを入力する。
  * @return コードが漢字でない場合は0を返す。
  */
-int iskanji(char *code)
+int iskanji(char *codein)
 {
+	unsigned char *code = (unsigned char *)codein;
+
     if((*code >= 0xa1) && (*code <= 0xfe)){
         // EUCの場合
         return 1;

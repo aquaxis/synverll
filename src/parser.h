@@ -124,7 +124,6 @@ typedef struct parser_tree{
 
 
 // parser.c
-extern char *charalloc(char *in);
 extern int create_header_source();
 extern int create_proc_source();
 extern PARSER_TREE * get_parser_tree_current();

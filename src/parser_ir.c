@@ -20,6 +20,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -1062,16 +1063,6 @@ int parser_ir_source(char *buf)
 
     return 0;
 }
-/*
-char *sep_p(char *name){
-	if(name[0] == '%'){
-printf("%s\n", &name[1]);
-		return &name[1];
-	}else{
-		return name;
-	}
-}
-*/
 /*!
  * @brief	ラベル名からステージ番号を取得する
  *

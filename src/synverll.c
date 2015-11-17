@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -42,20 +43,14 @@ int split_c_source(char *filename)
 	int i;
 	char *llvm_command;
 
-	printf("[Parser Start]\n");
+	printf("[C Source Parser Start]\n");
 
-    read_file(filename);							// ファイルの読み込みとトークン取得
+    read_file(filename);								// ファイルの読み込みとトークン取得
     set_token_order_current(get_token_order_top());	// トークンのポインタをトップへ戻す
 
-    parser_c_source();								// 構文解析
-
-    // Processの処理
-    printf(" -> create process source\n");
-    function_count = create_proc_source();
-
-	// Lineの処理
-    printf(" -> create header source\n");
-    create_header_source();
+    parser_c_source();									// 構文解析
+    function_count = create_proc_source();				// Processの処理
+    create_header_source();								// Lineの処理
 
 	// トークンオーダーをクリーンナップする
 	clean_token_order();
@@ -87,7 +82,7 @@ int process_function(char *name)
     char *line, *token;
 	char *filename, *oldname;
 
-	printf("[LLVM-IR function parser start]\n");
+	printf("[LLVM-IR Function Parser Start]\n");
 
 	line = calloc(STR_MAX,1);
 	token = calloc(STR_MAX,1);
@@ -164,18 +159,20 @@ int process_function(char *name)
 
 		// モジュールの登録
 		register_module_tree(module_name);
-		new_module_stack();
-if(debug_mode){
-		sprintf(oldname, "__%s.ll", name);
-		sprintf(filename, "__%s.ll", &module_name[1]);
-		printf("%s -> %s\n", oldname, filename);
-		rename(oldname, filename);
+		new_module_tree();
 
-		sprintf(oldname, "__%s.c", name);
-		sprintf(filename, "__%s.c", &module_name[1]);
-		printf("%s -> %s\n", oldname, filename);
-		rename(oldname, filename);
-}
+		if(debug_mode){
+			sprintf(oldname, "__%s.ll", name);
+			sprintf(filename, "__%s.ll", &module_name[1]);
+			printf("%s -> %s\n", oldname, filename);
+			rename(oldname, filename);
+
+			sprintf(oldname, "__%s.c", name);
+			sprintf(filename, "__%s.c", &module_name[1]);
+			printf("%s -> %s\n", oldname, filename);
+			rename(oldname, filename);
+		}
+
 		clean_parser_tree_ir();
 		clean_proc_tree();
 

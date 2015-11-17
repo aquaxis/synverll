@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -37,19 +38,6 @@ int parser_level = 0;
 PARSER_TREE *parser_tree_top        = NULL;
 PARSER_TREE *parser_tree_current    = NULL;
 PARSER_TREE *parser_tree_prev       = NULL;
-
-/*!
- * @brief	文字列の領域取得と登録
- */
-char *charalloc(char *in)
-{
-	char *buf;
-
-	buf = calloc(strlen(in)+1,1);
-	strcpy(buf, in);
-
-	return (char *)buf;
-}
 
 /*!
  * @brief 構文解析木の追加
@@ -111,6 +99,8 @@ int create_proc_source()
 	int size;
 	char *const_header = "#include \"__extern.h\"\n\n\0";
 
+    printf(" -> Create Process Source\n");
+	
 	token = calloc(STR_MAX, 1);
 	line = calloc(STR_MAX, 1);
 
@@ -164,6 +154,8 @@ int create_header_source()
 	char *const_extern_h = "__extern.h\0";
 
 	char *const_grmem_func = "void __gr_mem(){\n";
+
+    printf(" -> Create Header Source\n");
 
 	token = calloc(STR_MAX, 1);
 

@@ -26,6 +26,7 @@
 #include <string.h>
 #include <math.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -51,31 +52,6 @@ typedef struct struct_tree{
 } STRUCT_TREE;
 
 STRUCT_TREE *struct_tree_top        = NULL;
-STRUCT_TREE *struct_tree_current    = NULL;
-STRUCT_TREE *struct_tree_prev       = NULL;
-
-/*!
- * @brief	structの登録
- *
- * @note
- * 構造体定義が存在しない場合は新規で生成し、存在する場合は現在の構造体定義の次に新しい構造体定義を追加する
- */
-int insert_struct_tree()
-{
-    if(struct_tree_top == NULL){
-        struct_tree_top     = (STRUCT_TREE *)malloc(sizeof(STRUCT_TREE));
-        memset(struct_tree_top, 0, sizeof(STRUCT_TREE));
-        struct_tree_current = struct_tree_top;
-    }else{
-        struct_tree_current->next_ptr   = (STRUCT_TREE *)malloc(sizeof(STRUCT_TREE));
-        memset(struct_tree_current->next_ptr, 0, sizeof(STRUCT_TREE));
-        struct_tree_prev                = struct_tree_current;
-        struct_tree_current             = struct_tree_current->next_ptr;
-        struct_tree_current->prev_ptr   = struct_tree_prev;
-        struct_tree_current->next_ptr   = NULL;
-    }
-    return 0;
-}
 
 /*!
  * @brief	structの開放
@@ -94,7 +70,6 @@ int clean_struct_tree()
         now_struct_tree = new_struct_tree;
     }
     struct_tree_top = NULL;
-    struct_tree_current = struct_tree_top;
     return 0;
 }
 
@@ -103,13 +78,28 @@ int clean_struct_tree()
  */
 int register_struct_tree(char *label, char *argument)
 {
-	insert_struct_tree();
-//	struct_tree_current->label = malloc(strlen(label) +1);
-//	strcpy(struct_tree_current->label, label);
-//	struct_tree_current->argument = malloc(strlen(argument) +1);
-//	strcpy(struct_tree_current->argument, argument);
-	struct_tree_current->label = charalloc(label);
-	struct_tree_current->argument = charalloc(argument);
+	STRUCT_TREE *now_struct_tree = NULL;
+	STRUCT_TREE *old_struct_tree = NULL;
+
+	now_struct_tree = struct_tree_top;
+	while(now_struct_tree != NULL){
+		old_struct_tree = now_struct_tree;
+		now_struct_tree = now_struct_tree->next_ptr;
+	}
+
+	now_struct_tree				= (STRUCT_TREE *)calloc(sizeof(STRUCT_TREE),1);
+	now_struct_tree->prev_ptr	= old_struct_tree;
+	now_struct_tree->next_ptr	= NULL;
+
+	if(struct_tree_top == NULL){
+		struct_tree_top				= now_struct_tree;
+	}else{
+		old_struct_tree->next_ptr	= now_struct_tree;
+	}
+
+
+	now_struct_tree->label = charalloc(label);
+	now_struct_tree->argument = charalloc(argument);
 	return 0;
 }
 

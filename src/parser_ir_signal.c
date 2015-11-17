@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "synverll.h"
 #include "token.h"
 #include "parser.h"
@@ -48,28 +49,6 @@ typedef struct signal_tree{
 } SIGNAL_TREE;
 
 SIGNAL_TREE *signal_tree_top        = NULL;
-SIGNAL_TREE *signal_tree_current    = NULL;
-SIGNAL_TREE *signal_tree_prev       = NULL;
-
-/**
- * @brief	信号ツリー登録
- */
-int insert_signal_tree()
-{
-    if(signal_tree_top == NULL){
-        signal_tree_top     = (SIGNAL_TREE *)malloc(sizeof(SIGNAL_TREE));
-        memset(signal_tree_top, 0, sizeof(SIGNAL_TREE));
-        signal_tree_current = signal_tree_top;
-    }else{
-        signal_tree_current->next_ptr   = (SIGNAL_TREE *)malloc(sizeof(SIGNAL_TREE));
-        memset(signal_tree_current->next_ptr, 0, sizeof(SIGNAL_TREE));
-        signal_tree_prev                = signal_tree_current;
-        signal_tree_current             = signal_tree_current->next_ptr;
-        signal_tree_current->prev_ptr   = signal_tree_prev;
-        signal_tree_current->next_ptr   = NULL;
-    }
-    return 0;
-}
 
 /**
  * @brief	信号ツリー削除
@@ -88,7 +67,6 @@ int clean_signal_tree()
         now_signal_tree = new_signal_tree;
     }
     signal_tree_top = NULL;
-    signal_tree_current = signal_tree_top;
     return 0;
 }
 
@@ -100,10 +78,35 @@ int clean_signal_tree()
  */
 int register_signal_tree(char *label, char *type, int flag)
 {
-	insert_signal_tree();
-	signal_tree_current->label = charalloc(label);
-	signal_tree_current->flag = flag;
-	signal_tree_current->type = charalloc(type);
+	SIGNAL_TREE *now_signal_tree = NULL;
+	SIGNAL_TREE *old_signal_tree = NULL;
+	int width = 0;
+
+//	insert_signal_tree();
+
+
+	now_signal_tree = signal_tree_top;
+	while(now_signal_tree != NULL){
+		old_signal_tree = now_signal_tree;
+		now_signal_tree = now_signal_tree->next_ptr;
+	}
+
+	now_signal_tree				= (SIGNAL_TREE *)calloc(sizeof(SIGNAL_TREE),1);
+	now_signal_tree->prev_ptr	= old_signal_tree;
+	now_signal_tree->next_ptr	= NULL;
+
+	if(signal_tree_top == NULL){
+		signal_tree_top				= now_signal_tree;
+	}else{
+		old_signal_tree->next_ptr	= now_signal_tree;
+	}
+
+
+	now_signal_tree->label = charalloc(label);
+	now_signal_tree->flag = flag;
+	now_signal_tree->type = charalloc(type);
+	width = get_width(type);
+#if 0
 	{
 		if(!strcmp(type, "i1")){
 			/*
@@ -130,6 +133,9 @@ int register_signal_tree(char *label, char *type, int flag)
 			printf("[WARNING] register_signal_tree(): unknown: label=%s, type=%s\n", label, type);
 		}
 	}
+#endif
+	now_signal_tree->width = width;
+	
 	return 0;
 }
 
@@ -177,20 +183,7 @@ int create_verilog_signal()
 
     return 0;
 }
-/*
-					proc_tree_current->seq_exec.ena = 1;
 
-					str1 = regalloc(now_parser_tree_ir->label);
-					sprintf(buf, "");
-					adrs = get_adrs_memmap(module_name, now_parser_tree_ir->label);
-					sprintf(buf, "\t\t\t%s <= (%d);\n",
-						str1,
-						adrs
-					);
-					free(str1);
-					proc_tree_current->seq_exec.body = register_verilog(proc_tree_current->seq_exec.body, buf);
-
- */
 /*!
  * @brief	信号のVerilog HDL出力
  */
