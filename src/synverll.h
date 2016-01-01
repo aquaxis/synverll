@@ -15,8 +15,8 @@
 
 #define STR_MAX 1024 // 1行の最大長
 
-#define REVISION_MAIN    0
-#define REVISION_MANOR   4
+#define REVISION_MAIN    1
+#define REVISION_MANOR   0
 
 extern void help();
 extern int main(int argc,char *argv[]);
